@@ -5,10 +5,10 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import sys
 
 
-from tab_controlador import ControladorTab
-from tab_simulador import SimuladorTab
-from tab_malha_fechada import MalhaFechadaTab
-from tab_otimizador import Otimizador3DTab
+from tabs.tab_controlador import ControladorTab
+from tabs.tab_simulador import SimuladorTab
+from tabs.tab_malha_fechada import MalhaFechadaTab
+from tabs.tab_otimizador import Otimizador3DTab
 
 
 class Application(tk.Tk):
