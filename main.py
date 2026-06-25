@@ -7,7 +7,8 @@ import sys
 
 from tab_controlador import ControladorTab
 from tab_simulador import SimuladorTab
-from tab_otimizador import OtimizadorTab
+from tab_malha_fechada import MalhaFechadaTab
+from tab_otimizador import Otimizador3DTab
 
 
 class Application(tk.Tk):
@@ -35,21 +36,19 @@ class Application(tk.Tk):
         self.tab_simulador = SimuladorTab(self.notebook)
         self.notebook.add(self.tab_simulador, text=" Simulador (Parte B) ")
 
-        # 3. Instanciando e adicionando a aba do otimizador (Parte C)
-        self.tab_otimizador = OtimizadorTab(self.notebook)
-        self.notebook.add(self.tab_otimizador, text=" Otimizador (Parte C) ")
+        # 3. Instanciando e adicionando a aba do otimizador (Passando as referências das outras abas)
+        self.tab_otimizador = MalhaFechadaTab(self.notebook, self.tab_controlador, self.tab_simulador)
+        self.notebook.add(self.tab_otimizador, text=" Malha Fechada (Parte C) ")
+
+        # 4. Instanciando e adicionando a aba de Varredura e Superfície 3D (Parte D)
+        self.tab_otimizador_3d = Otimizador3DTab(self.notebook, self.tab_controlador, self.tab_simulador)
+        self.notebook.add(self.tab_otimizador_3d, text=" Otimização 3D (Parte D) ")
 
     def on_closing(self):
         """Garante que o script Python pare totalmente ao fechar a janela"""
         plt.close('all')  # Fecha os gráficos do matplotlib em segundo plano
         self.destroy()    # Destrói a interface do Tkinter
         sys.exit()        # Mata o processo do script no terminal/IDLE
-
-
-
-
-
-
 
 
 def main():

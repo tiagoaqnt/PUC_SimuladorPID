@@ -15,7 +15,7 @@ class ControladorTab(ttk.Frame):
         self.rowconfigure(1, weight=1)  # Linha da Tabela
 
         # --- PAINEL ESQUERDO: INPUTS (Ocupa as duas linhas verticais) ---
-        self.frame_inputs = ttk.LabelFrame(self, text=" Parâmetros do Controlador ", padding=15)
+        self.frame_inputs = ttk.LabelFrame(self, text=" Parâmetros do controlador ", padding=15)
         self.frame_inputs.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=10, pady=10)
 
         self.campos = {}
@@ -24,8 +24,8 @@ class ControladorTab(ttk.Frame):
             "Ti (s)": "1",
             "Td (s)": "0.01", 
             "fs (Hz)": "10",
-            "VP inicial (°C)": "24.0",
-            "Setpoint (°C)": "60.0", 
+            "VP inicial": "24.0",
+            "Setpoint": "60.0", 
             "Amostras máx.": "100"
         }
         
@@ -96,8 +96,8 @@ class ControladorTab(ttk.Frame):
             ti = float(self.campos["Ti (s)"].get())
             td = float(self.campos["Td (s)"].get())
             fs = float(self.campos["fs (Hz)"].get())
-            sp = float(self.campos["Setpoint (°C)"].get())
-            vp_inicial = float(self.campos["VP inicial (°C)"].get())
+            sp = float(self.campos["Setpoint"].get())
+            vp_inicial = float(self.campos["VP inicial"].get())
             max_amostras = int(self.campos["Amostras máx."].get())
 
             ts = 1 / fs
@@ -156,7 +156,7 @@ class ControladorTab(ttk.Frame):
             # Atualização dinâmica do gráfico
             self.ax.clear()
             self.ax.plot(amostras, vm_historico, 'o-', color='#ff7f0e', markersize=4, label='VM (Sinal Saturado %)')
-            self.ax.plot(amostras, sp_historico, 'o-', color='#1f77b4', linewidth=1.5, label='SP (Setpoint °C)')
+            self.ax.plot(amostras, sp_historico, 'o-', color='#1f77b4', linewidth=1.5, label='SP (Setpoint)')
             self.ax.set_title("Resposta do controlador em malha aberta", fontsize=11, fontweight='bold')
             self.ax.set_xlabel("Amostras (k)")
             self.ax.set_ylabel("Variável Manipulada (VM %)")

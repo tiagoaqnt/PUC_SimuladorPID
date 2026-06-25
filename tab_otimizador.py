@@ -7,188 +7,187 @@ import numpy as np
 import math
 
 
-class OtimizadorTab(ttk.Frame):
-    def __init__(self, parent):
+class Otimizador3DTab(ttk.Frame):
+    def __init__(self, parent, tab_controlador, tab_simulador):
         super().__init__(parent)
+        
+        self.tab_controlador = tab_controlador
+        self.tab_simulador = tab_simulador
         
         self.columnconfigure(0, weight=0)
         self.columnconfigure(1, weight=1)
-        self.rowconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)  
+        self.rowconfigure(1, weight=1)  
 
-        # --- PAINEL ESQUERDO: APENAS COEFICIENTES E EQUAÇÕES ---
-        self.frame_inputs = ttk.LabelFrame(self, text=" Configuração da Malha Fechada ", padding=12)
-        self.frame_inputs.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-
-        # 1. Seção do Simulador (Parte B)
-        lbl_ref_proc = ttk.Label(self.frame_inputs, text="Referência do Forno:\nc(k) = b1·c(k-1) + a1·m(k-d) + offset", 
-                                 font=("Arial", 9, "italic"), foreground="#555", justify="center")
-        lbl_ref_proc.grid(row=0, column=0, columnspan=2, pady=(0, 10))
+        # --- PAINEL ESQUERDO: LIMITES DA VARREDURA ---
+        self.frame_inputs = ttk.LabelFrame(self, text=" Limites de Varredura do Grid ", padding=15)
+        self.frame_inputs.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=10, pady=10)
 
         self.campos = {}
-        inputs_processo = {
-            "Coeficiente b1": "0.8607",
-            "Coeficiente a1": "0.0398",
-            "Atraso d (amostras)": "4",
-            "Offset (°C ou %)": "24.0"
+        inputs_locais = {
+            "Offset": "24.0",
+            "Tempo total Sim (s)": "400.0",
+            "Kp Mínimo": "0.1",
+            "Kp Máximo": "2.0",
+            "Ti Mínimo (s)": "1.0",
+            "Ti Máximo (s)": "200.0"
         }
         
         linha = 1
-        for label_text, val in inputs_processo.items():
-            lbl = ttk.Label(self.frame_inputs, text=label_text, font=("Arial", 9, "bold"))
-            lbl.grid(row=linha, column=0, sticky="w", pady=3)
-            entry = ttk.Entry(self.frame_inputs, width=12, justify='center')
+        for label_text, val in inputs_locais.items():
+            lbl = ttk.Label(self.frame_inputs, text=label_text, font=("Arial", 10, "bold"))
+            lbl.grid(row=linha, column=0, sticky="w", pady=4)
+            entry = ttk.Entry(self.frame_inputs, width=10, justify='center')
             entry.insert(0, val)
-            entry.grid(row=linha, column=1, pady=3, padx=10)
+            entry.grid(row=linha, column=1, pady=4, padx=5)
             self.campos[label_text] = entry
             linha += 1
 
-        # Separador Visual
-        ttk.Separator(self.frame_inputs, orient='horizontal').grid(row=linha, column=0, columnspan=2, sticky="ew", pady=10)
-        linha += 1
+        self.btn_otimizar = ttk.Button(self.frame_inputs, text="Gerar Otimização 3D", command=self.processar_otimizacao)
+        self.btn_otimizar.grid(row=linha, column=0, columnspan=2, pady=20, sticky="ew")
 
-        # 2. Seção do Controlador (Parte A)
-        lbl_ref_ctrl = ttk.Label(self.frame_inputs, text="Parâmetros de Sintonia PID:", 
-                                 font=("Arial", 9, "italic"), foreground="#555")
-        lbl_ref_ctrl.grid(row=linha, column=0, columnspan=2, pady=(0, 5))
-        linha += 1
-
-        inputs_controlador = {
-            "Kp Nominal": "0.9",
-            "Ti Nominal (s)": "15.0",
-            "Td (s)": "0.1",
-            "Ts Amostragem (s)": "9.0",
-            "Setpoint Desejado": "35.0"
-        }
-
-        for label_text, val in inputs_controlador.items():
-            lbl = ttk.Label(self.frame_inputs, text=label_text, font=("Arial", 9, "bold"))
-            lbl.grid(row=linha, column=0, sticky="w", pady=3)
-            entry = ttk.Entry(self.frame_inputs, width=12, justify='center')
-            entry.insert(0, val)
-            entry.grid(row=linha, column=1, pady=3, padx=10)
-            self.campos[label_text] = entry
-            linha += 1
-
-        # Botões e Indicadores
-        self.btn_2d = ttk.Button(self.frame_inputs, text="Ver Resposta Temporal (2D)", command=self.simular_2d)
-        self.btn_2d.grid(row=linha, column=0, columnspan=2, pady=(15, 5), sticky="ew")
-        
-        self.btn_3d = ttk.Button(self.frame_inputs, text="Gerar Superfície Otimização (3D)", command=self.simular_3d)
-        self.btn_3d.grid(row=linha+1, column=0, columnspan=2, pady=5, sticky="ew")
-
-        self.lbl_iae = ttk.Label(self.frame_inputs, text="Desempenho ITAE: ---", 
-                                 font=("Arial", 9, "bold"), foreground="#2b579a")
-        self.lbl_iae.grid(row=linha+2, column=0, columnspan=2, pady=5)
-
-        # --- PAINEL DIREITO: GRÁFICO DINÂMICO ---
+        # --- PAINEL DIREITO SUPERIOR: SUPERFÍCIE 3D ---
         self.frame_plot = ttk.Frame(self)
-        self.frame_plot.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        self.frame_plot.grid(row=0, column=1, sticky="nsew", padx=10, pady=5)
 
-        self.fig = plt.figure(figsize=(6, 5), dpi=100)
+        self.fig = plt.figure(figsize=(6, 3.5), dpi=100)
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_plot)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        self.simular_2d()
+        # --- PAINEL DIREITO INFERIOR: TABELA ITAE ---
+        self.frame_table = ttk.LabelFrame(self, text=" Matriz de Resultados (Ordenada por melhor ITAE) ", padding=5)
+        self.frame_table.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
 
-    def rodar_loop_matematico(self, kp, ti, td):
-        """Loop de malha fechada com horizonte adaptativo calculado dinamicamente"""
-        b1 = float(self.campos["Coeficiente b1"].get())
-        a1_proc = float(self.campos["Coeficiente a1"].get())
-        atraso_total = int(self.campos["Atraso d (amostras)"].get())
-        offset = float(self.campos["Offset (°C ou %)"].get())
+        colunas = ("kp", "ti", "itae")
+        self.tree = ttk.Treeview(self.frame_table, columns=colunas, show="headings")
         
-        ts = float(self.campos["Ts Amostragem (s)"].get())
-        sp = float(self.campos["Setpoint Desejado"].get())
+        self.tree.heading("kp", text="Ganho Proporcional (Kp)")
+        self.tree.heading("ti", text="Tempo Integral (Ti s)")
+        self.tree.heading("itae", text="Índice Desempenho ITAE")
+
+        for col in colunas:
+            self.tree.column(col, anchor="center", width=150)
+
+        scrollbar = ttk.Scrollbar(self.frame_table, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
         
-        # Cálculo adaptativo do horizonte de simulação real (5 * tau ou 5 * Ti)
-        tau_planta = -ts / math.log(b1) if 0 < b1 < 1 else 60.0
-        t_simulacao = max(5 * tau_planta, 5 * ti)
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    def rodar_simulacao_interna(self, kp, ti, td, fs, offset_graus, tempo_max, s_min, s_max, delta_t, delta_m, t_estab, tm):
+        ts = 1.0 / fs
+        max_amostras = max(10, int(tempo_max / ts))
+
+        span_sensor = s_max - s_min
+        k_ganho_planta = ((delta_t / span_sensor) * 100) / delta_m
+        tau = t_estab / 5.0
         
-        max_amostras = int(t_simulacao / ts)
-        max_amostras = max(50, min(max_amostras, 300))  # Guardrail de segurança para o loop
-        
+        b1 = math.exp(-ts / tau)
+        a1_proc = k_ganho_planta * (1 - b1)
+        atraso_total = int(round(tm / ts)) + 1
+
+        offset_pct = ((offset_graus - s_min) / span_sensor) * 100
+        sp_pct = ((float(self.tab_controlador.campos["Setpoint"].get()) - s_min) / span_sensor) * 100
+
         a0_ctrl = kp * (1 + (ts / ti) + (td / ts))
         a1_ctrl = -kp * (1 + (2 * td / ts))
         a2_ctrl = kp * (td / ts)
+
+        c_prev = offset_pct
+        c_historico = [offset_pct] * (atraso_total + 1)
+        vm_historico = [0.0] * (atraso_total + 1)
+        e_historico = [0.0, 0.0]
         
-        amostras = list(range(-atraso_total, max_amostras + 1))
-        c_dict = {k: offset for k in amostras}  
-        vm_dict = {k: 0.0 for k in amostras}
-        e_dict = {k: 0.0 for k in amostras}
-        
-        itae_puro = 0.0
-        
+        itae = 0.0
+
         for k in range(0, max_amostras + 1):
             if k >= 1:
-                m_atrasado = vm_dict[k - atraso_total]
-                c_dict[k] = (b1 * c_dict[k - 1]) + (a1_proc * m_atrasado) + (1 - b1) * offset
-            
-            e_dict[k] = sp - c_dict[k]
-            
-            # Cálculo estável do ITAE puro sobre a janela adaptativa
-            itae_puro += (k * ts) * abs(e_dict[k])
-            
-            delta_m = (a0_ctrl * e_dict[k]) + (a1_ctrl * e_dict.get(k - 1, 0.0)) + (a2_ctrl * e_dict.get(k - 2, 0.0))
-            m_atual = vm_dict[k - 1] + delta_m
-            vm_dict[k] = max(0.0, min(100.0, m_atual))
-            
-        return amostras, c_dict, vm_dict, itae_puro, sp
+                m_atrasado = vm_historico[-atraso_total]
+                c_atual = (b1 * c_prev) + (a1_proc * m_atrasado) + (1 - b1) * offset_pct
+                c_prev = c_atual
+            else:
+                c_atual = offset_pct
 
-    def simular_2d(self):
-        try:
-            kp = float(self.campos["Kp Nominal"].get())
-            ti = float(self.campos["Ti Nominal (s)"].get())
-            td = float(self.campos["Td (s)"].get())
+            e_k = sp_pct - c_atual
+            itae += (k * ts) * abs(e_k)
             
-            amostras, c_dict, vm_dict, itae, sp = self.rodar_loop_matematico(kp, ti, td)
-            self.lbl_iae.config(text=f"Desempenho ITAE: {itae:.2f}")
-            
-            c_vals = [c_dict[k] for k in amostras]
-            vm_vals = [vm_dict[k] for k in amostras]
-            sp_linha = [sp] * len(amostras)
-            
-            self.fig.clf()
-            ax = self.fig.add_subplot(111)
-            ax.plot(amostras, c_vals, 'o-', color='#ff7f0e', markersize=3, label='Saída do Processo c(k)')
-            ax.plot(amostras, sp_linha, '--', color='r', label='Setpoint (SP)')
-            ax.plot(amostras, vm_vals, 'o-', color='#1f77b4', markersize=3, alpha=0.5, label='Ação do Controlador VM (%)')
-            
-            ax.set_title("Resposta Temporal em Malha Fechada (Parte C)", fontsize=11, fontweight='bold')
-            ax.set_xlabel("Amostra (k)")
-            ax.set_ylabel("Escala das Variáveis")
-            ax.grid(True, linestyle='--', alpha=0.6)
-            ax.legend()
-            self.canvas.draw()
-        except ValueError:
-            messagebox.showerror("Erro", "Verifique os campos numéricos.")
+            delta_m = (a0_ctrl * e_k) + (a1_ctrl * e_historico[-1]) + (a2_ctrl * e_historico[-2])
+            m_atual = vm_historico[-1] + delta_m
+            vm_k = max(0.0, min(100.0, m_atual))
 
-    def simular_3d(self):
+            c_historico.append(c_atual)
+            vm_historico.append(vm_k)
+            e_historico.append(e_k)
+
+        return itae
+
+    def processar_otimizacao(self):
         try:
-            kp_nom = float(self.campos["Kp Nominal"].get())
-            ti_nom = float(self.campos["Ti Nominal (s)"].get())
-            td = float(self.campos["Td (s)"].get())
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+
+            # 1. Parâmetros locais e limites definidos pelo usuário
+            offset_graus = float(self.campos["Offset"].get())
+            tempo_max = float(self.campos["Tempo total Sim (s)"].get())
             
-            # Varredura proporcional calculada dinamicamente ao redor do valor nominal
-            kp_vetor = np.linspace(kp_nom * 0.5, kp_nom * 1.5, 20)
-            ti_vetor = np.linspace(ti_nom * 0.5, ti_nom * 1.5, 20)
+            kp_min = float(self.campos["Kp Mínimo"].get())
+            kp_max = float(self.campos["Kp Máximo"].get())
+            ti_min = float(self.campos["Ti Mínimo (s)"].get())
+            ti_max = float(self.campos["Ti Máximo (s)"].get())
+
+            # 2. Parâmetros nominais importados das outras abas
+            td = float(self.tab_controlador.campos["Td (s)"].get())
+            fs = float(self.tab_controlador.campos["fs (Hz)"].get())
+
+            s_min = float(self.tab_simulador.campos["Sensor mín"].get())
+            s_max = float(self.tab_simulador.campos["Sensor máx"].get())
+            delta_t = float(self.tab_simulador.campos["ΔVP medido"].get())
+            delta_m = float(self.tab_simulador.campos["ΔM aplicado (%)"].get())
+            t_estab = float(self.tab_simulador.campos["Tempo estabilização (s)"].get())
+            tm = float(self.tab_simulador.campos["Tempo morto Tm (s)"].get())
+
+            # 3. Geração do Grid baseado estritamente nos limites da tela (20x20)
+            kp_vetor = np.linspace(kp_min, kp_max, 20)
+            ti_vetor = np.linspace(ti_min, ti_max, 20)
+            
             X, Y = np.meshgrid(kp_vetor, ti_vetor)
             Z = np.zeros(X.shape)
-            
+
+            # 4. Execução em lote das simulações
+            lista_resultados = []
             for i in range(X.shape[0]):
                 for j in range(X.shape[1]):
-                    _, _, _, itae_val, _ = self.rodar_loop_matematico(X[i, j], Y[i, j], td)
+                    kp_teste = X[i, j]
+                    ti_teste = Y[i, j]
+                    
+                    itae_val = self.rodar_simulacao_interna(
+                        kp_teste, ti_teste, td, fs, offset_graus, tempo_max,
+                        s_min, s_max, delta_t, delta_m, t_estab, tm
+                    )
                     Z[i, j] = itae_val
-            
+                    lista_resultados.append((kp_teste, ti_teste, itae_val))
+
+            # 5. Ordena os resultados para exibir na tabela (Do menor ITAE para o maior)
+            lista_resultados.sort(key=lambda x: x[2])
+
+            # Popula a tabela com os resultados do grid ordenados (Exibe as 50 melhores combinações)
+            for res in lista_resultados[:50]:
+                self.tree.insert("", tk.END, values=(f"{res[0]:.4f}", f"{res[1]:.2f}", f"{res[2]:.2f}"))
+
+            # 6. Plotagem da Superfície 3D
             self.fig.clf()
             ax = self.fig.add_subplot(111, projection='3d')
             surf = ax.plot_surface(X, Y, Z, cmap='turbo', edgecolor='none', alpha=0.85)
             
-            ax.set_title("Superfície 3D de Otimização (ITAE Adaptativo)", fontsize=11, fontweight='bold')
+            ax.set_title("Superfície 3D de Otimização do Critério ITAE", fontsize=11, fontweight='bold')
             ax.set_xlabel("Ganho Kp")
             ax.set_ylabel("Tempo Ti (s)")
             ax.set_zlabel("Métrica ITAE")
+            
             self.fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10, pad=0.08)
             self.canvas.draw()
+
         except ValueError:
-            messagebox.showerror("Erro", "Erro ao processar simulação 3D.")
-            
+            messagebox.showerror("Erro", "Verifique se todas as abas e limites possuem dados numéricos válidos.")
+        except Exception as e:
+            messagebox.showerror("Erro no Processamento", f"Ocorreu um erro: {e}")

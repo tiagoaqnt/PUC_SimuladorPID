@@ -16,19 +16,19 @@ class SimuladorTab(ttk.Frame):
         self.rowconfigure(1, weight=1)  # Linha da Tabela
 
         # --- PAINEL ESQUERDO: INPUTS PRÁTICOS ---
-        self.frame_inputs = ttk.LabelFrame(self, text=" Modelagem Prática do Forno ", padding=12)
+        self.frame_inputs = ttk.LabelFrame(self, text=" Modelagem prática da resposta do sistema", padding=12)
         self.frame_inputs.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=10, pady=10)
 
         self.campos = {}
         # Valores padrão baseados rigorosamente nos seus exemplos práticos do caderno
         valores_padrao = {
-            "Sensor mín (°C)": "10.0",
-            "Sensor máx (°C)": "80.0",
+            "Sensor mín": "10.0",
+            "Sensor máx": "80.0",
             "ΔM aplicado (%)": "50.0",
-            "ΔT medido (°C)": "40.0",
+            "ΔVP medido": "40.0",
             "Tempo estabilização (s)": "300",
             "Tempo morto Tm (s)": "30",
-            "Temp. inicial (°C)": "24.0",
+            "Temp. inicial": "24.0",
             "Amostras máx": "100"
         }
         
@@ -77,7 +77,7 @@ class SimuladorTab(ttk.Frame):
         self.tree.heading("t", text="Tempo real (s)")
         self.tree.heading("vm", text="Entrada VM (%)")
         self.tree.heading("ck_pct", text="Saída c(k) (%)")
-        self.tree.heading("ck_graus", text="Temperatura (°C)")
+        self.tree.heading("ck_graus", text="VP")
 
         for col in colunas:
             self.tree.column(col, anchor="center", width=120)
@@ -111,9 +111,9 @@ class SimuladorTab(ttk.Frame):
                 self.tree.delete(i)
 
             # 1. Captura e Cálculo Prático do Ganho K conforme o SPAN do seu Sensor
-            s_min = float(self.campos["Sensor mín (°C)"].get())
-            s_max = float(self.campos["Sensor máx (°C)"].get())
-            delta_t = float(self.campos["ΔT medido (°C)"].get())
+            s_min = float(self.campos["Sensor mín"].get())
+            s_max = float(self.campos["Sensor máx"].get())
+            delta_t = float(self.campos["ΔVP medido"].get())
             delta_m = float(self.campos["ΔM aplicado (%)"].get())
             
             span_sensor = s_max - s_min
@@ -132,7 +132,7 @@ class SimuladorTab(ttk.Frame):
             ts = self.calcular_faixa_astrom()  # Adota o Ts ideal calculado de acordo com o tempo de subida
             
             tm = float(self.campos["Tempo morto Tm (s)"].get())
-            t_inicial = float(self.campos["Temp. inicial (°C)"].get())
+            t_inicial = float(self.campos["Temp. inicial"].get())
             max_amostras = int(self.campos["Amostras máx"].get())
 
             # 3. Discretização exata do processo físico
@@ -151,15 +151,14 @@ class SimuladorTab(ttk.Frame):
 
             amostras_historico = list(range(-atraso_total, max_amostras + 1))
             
-            # Montagem do perfil de entrada VM (Degrau de 50% saltando para 100% em k=50)
+            # Montagem do perfil de entrada VM (Degrau único no instante k=0)
             vm_dict = {}
             for k in amostras_historico:
                 if k < 0:
                     vm_dict[k] = 0.0
-                elif 0 <= k < 50:
-                    vm_dict[k] = 50.0
                 else:
-                    vm_dict[k] = 100.0
+                    # Aplica exatamente o valor que o usuário digitou no painel esquerdo
+                    vm_dict[k] = delta_m
 
             # Inicializa a saída com a condição térmica inicial
             c_dict = {}
@@ -194,7 +193,7 @@ class SimuladorTab(ttk.Frame):
             self.ax.clear()
             self.ax.plot(amostras_historico, vm_plot, 'o-', color='#1f77b4', linewidth=1.5, label='VM (Potência %)')
             self.ax.plot(amostras_historico, c_pct_plot, 'o-', color='#2ca02c', linewidth=1.5, label='c(k) saída normalizada (%)')
-            self.ax.plot(amostras_historico, c_graus_plot, 'o-', color='#ff7f0e', linewidth=2, label='Temperatura do forno (°C)')
+            self.ax.plot(amostras_historico, c_graus_plot, 'o-', color='#ff7f0e', linewidth=2, label='VP do forno')
             self.ax.set_title("Simulação em malha aberta", fontsize=11, fontweight='bold')
             self.ax.set_xlabel(f"Amostra k (Ts = {ts}s)")
             self.ax.set_ylabel("Escala das variáveis")
